@@ -17,13 +17,14 @@
 #include <sys/time.h>
 #include <vector>
 #include <glm/glm.hpp>
-#include "Plane.h"
-#include "RayBatchFactory.h"
-#include "Sphere.h"
+#include <GL/freeglut.h>
+#include "FilePath.h"
 #include "SceneObject.h"
+#include "Plane.h"
+#include "Sphere.h"
+#include "RayBatchFactory.h"
 #include "Ray.h"
 #include "BVH.h"
-#include <GL/freeglut.h>
 using namespace std;
 
 #define NUM_THREADS 25
@@ -315,13 +316,13 @@ void initialize() {
 	Sphere *sphere3 = new Sphere(glm::vec3(5, 5, -70), 5.0);
 	sphere3->setColor(glm::vec3(1, 0, 0));   //Set colour to red
 	sphere3->setShininess(100);
-	// sphere3->setTransparency(true, 0.05);
+	sphere3->setTransparency(true, 0.1);
 	sceneObjects.push_back(sphere3);		 //Add sphere to scene objects
 
 	Sphere *sphere4 = new Sphere(glm::vec3(5, -10, -60), 5.0);
 	sphere4->setColor(glm::vec3(0, 1, 0));   //Set colour to green
 	sphere4->setSpecularity(false);
-	// sphere4->setRefractivity(true, 0.1, 1.1);
+	sphere4->setRefractivity(true, 0.1, 1.1);
 	sceneObjects.push_back(sphere4);		 //Add sphere to scene objects
 
 	Plane *plane = new Plane(glm::vec3(-20., -15, -40), //Point A
@@ -331,19 +332,15 @@ void initialize() {
 	plane->setColor(glm::vec3(0.8, 0.8, 0));
 	plane->setSpecularity(false);
 	plane->setStripe(true);
-	plane->addStripe(stripe_t {5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)}});
+	plane->addStripe(5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)});
 	plane->setTextured(true);
 	plane->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
-	plane->setTexture(TextureBMP("/Users/duncantasker/vscode-workspace/Comp_Graphics/CG_Lab07/static/textures/Butterfly.bmp"));
-
-	plane->setId(5);
+	plane->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
 	sceneObjects.push_back(plane);		 //Add plane to scene objects
 
 	// drawCircles(100, false);
 
 	bvh = new BVH(&sceneObjects);
-	// bvh->printNodes();
-	// bvh->printGraph();
 }
 
 void keyHandler(unsigned char key, int x, int y){

@@ -56,7 +56,7 @@ public:
 	glm::vec3 getColor(glm::vec3 hit) override;
 
 	void setStripe(bool flag);
-	void addStripe(stripe_t stripe);
+	void addStripe(int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors);
 	bool isStripe() { return stripe_; }
 
 	void setTextured(bool flag);

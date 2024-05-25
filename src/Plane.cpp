@@ -128,8 +128,8 @@ void Plane::setStripe(bool flag) {
 	stripe_ = flag;
 }
 
-void Plane::addStripe(stripe_t stripe) {
-	stripes_.push_back(stripe);
+void Plane::addStripe(int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors) {
+	stripes_.push_back(stripe_t {stripeWidth, stripeDirection, stripeColors});
 }
 
 void Plane::setTextured(bool flag) {
