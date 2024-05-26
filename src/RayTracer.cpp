@@ -31,10 +31,10 @@ const int NUM_THREADS = 25;
 const int BVH_THRESHOLD = 150;
 const bool PRINT_RAY_DEBUG = false; // this may not work correctly with multiple threads for best results, set NUM_THREADS to 1
 const bool PRINT_FRAME_TIME = true;
-const float EDIST = 30.0;
+const float EDIST = 25.0;
 const int NUMDIV = 800;
 const long TOTAL_RAYS = NUMDIV * NUMDIV;
-const int MAX_STEPS = 10;
+const int MAX_STEPS = 5;
 const float XMIN = -10.0;
 const float XMAX = 10.0;
 const float YMIN = -10.0;
@@ -126,7 +126,7 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 		glm::vec3 reflectedDir = glm::reflect(ray.dir, normalVec);
 		Ray reflectedRay(ray.hit, reflectedDir);
 		reflectedColor = trace(reflectedRay, obj->getRefractiveIndex(), step + 1);
-		color += rho * reflectedColor;
+		color = (1-rho) * color + rho * reflectedColor;
 	}
 
 	if(obj->isTransparent() && step < MAX_STEPS) {
@@ -337,8 +337,25 @@ void initialize() {
 								glm::vec3(-40., 40, -200)); //Point D
 	backWall->setColor(glm::vec3(0.8, 0.8, 0.8));
 	backWall->setSpecularity(false);
-	backWall->setCheckered(true, 5, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+	backWall->setCheckered(true, 2, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 	sceneObjects.push_back(backWall);
+
+	Plane *ceiling = new Plane(glm::vec3(-40., 40, -40), //Point A
+							   glm::vec3(40., 40, -40), //Point B
+							   glm::vec3(40., 40, -200), //Point C
+							   glm::vec3(-40., 40, -200)); //Point D
+	ceiling->setColor(glm::vec3(0.8, 0.8, 0.8));
+	ceiling->setSpecularity(false);
+	ceiling->setReflectivity(true, 0.7);
+	sceneObjects.push_back(ceiling);
+
+	Plane *leftWall = new Plane(glm::vec3(-40., -15, -40), //Point A
+								glm::vec3(-40., -15, -200), //Point B
+								glm::vec3(-40., 40, -200), //Point C
+								glm::vec3(-40., 40, -40)); //Point D
+	leftWall->setColor(glm::vec3(1, 0, 0));
+	leftWall->setSpecularity(false);
+	sceneObjects.push_back(leftWall);
 
 	// drawCircles(100, false);
 

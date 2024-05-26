@@ -4,6 +4,7 @@
 base_dir=$(dirname "$0")
 build_dir="$base_dir/build"
 debug_build=0
+release_build=0
 clean_build=0
 
 # Check for --clean and --debug arguments
@@ -13,6 +14,8 @@ do
         clean_build=1
     elif [ "$arg" == "--debug" ] ; then
         debug_build=1
+    elif [ "$arg" == "--release" ] ; then
+        release_build=1
     fi
 done
 
@@ -27,6 +30,8 @@ mkdir -p "$build_dir"
 cd "$build_dir"
 if [ $debug_build -eq 1 ] ; then
     cmake -DCMAKE_BUILD_TYPE=Debug ".."
+elif [ $release_build -eq 1 ] ; then
+    cmake -DCMAKE_BUILD_TYPE=Release ".."
 else
     cmake ".."
 fi
