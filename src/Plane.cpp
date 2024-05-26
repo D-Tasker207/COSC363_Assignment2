@@ -102,16 +102,26 @@ void Plane::calculateAABB() {
 
 glm::vec3 Plane::getColor(glm::vec3 hit) {
 	glm::vec3 color = color_;
-	if (stripe_){	
-		for(auto stripe : stripes_){
-			float projection = glm::dot(hit, stripe.stripeDirection);
-			int stripeIndex = ceil(projection / stripe.stripeWidth);
-			int colorIndex = stripeIndex % stripe.stripeColors.size();
-			if(colorIndex < 0) colorIndex += stripe.stripeColors.size();
-			color = stripe.stripeColors[colorIndex];
-		}
+	if(stripe_) {
+		float projection = glm::dot(hit, stripeDirection_);
+		int stripeIndex = static_cast<int>(std::floor(projection / stripeWidth_));
+		int colorIndex = stripeIndex % stripeColors_.size();
+		if(colorIndex < 0) colorIndex += stripeColors_.size();
+		color = stripeColors_[colorIndex];
 	}
-	if (tex_) {
+	if(checkered_) {
+		float projection1 = glm::dot(hit, glm::normalize(c_-b_));
+		float projection2 = glm::dot(hit, glm::normalize(a_-b_));
+
+		int stripeIndex1 = static_cast<int>(std::floor(projection1 / checkeredWidth_));
+		int stripeIndex2 = static_cast<int>(std::floor(projection2 / checkeredWidth_));
+
+		// Use XOR to create a checkered pattern
+		bool isEven = (stripeIndex1 % 2 == 0) ^ (stripeIndex2 % 2 == 0);
+
+		color = isEven ? checkeredColor1_ : checkeredColor2_;
+	}
+	if(tex_) {
 		float u = (hit.x - texA_.x) / (texB_.x - texA_.x);
 		float v = (hit.z - texA_.y) / (texB_.y - texA_.y);
 		if(u > 0 && u < 1 &&
@@ -124,12 +134,18 @@ glm::vec3 Plane::getColor(glm::vec3 hit) {
 	return color;
 }
 
-void Plane::setStripe(bool flag) {
+void Plane::setStripe(bool flag, int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors) {
 	stripe_ = flag;
+	stripeWidth_ = stripeWidth;
+	stripeDirection_ = stripeDirection;
+	stripeColors_ = stripeColors;
 }
 
-void Plane::addStripe(int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors) {
-	stripes_.push_back(stripe_t {stripeWidth, stripeDirection, stripeColors});
+void Plane::setCheckered(bool flag, int width, glm::vec3 color1, glm::vec3 color2) {
+	checkered_ = flag;
+	checkeredColor1_ = color1;
+	checkeredColor2_ = color2;
+	checkeredWidth_ = width;
 }
 
 void Plane::setTextured(bool flag) {

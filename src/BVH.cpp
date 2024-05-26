@@ -54,15 +54,6 @@ void BVH::buildRecursive(unsigned int nodeidx, unsigned int lidx, unsigned int r
     unsigned int mid = lidx;
     unsigned int left = lidx;
     unsigned int right = ridx - 1;
-    while (left <= right) {
-        int mid = (left + right) / 2;
-        if ((*sceneObjects)[mid]->getBBox().getCenter()[axis] > midpoint) {
-            right = mid - 1;
-        } else {
-            left = mid + 1;
-        }
-    }
-    mid = left;
 
     // if mid is equal to lidx or ridx, then all objects are on one side of the midpoint and use midpoint as the split
     if (mid == lidx || mid == ridx) {

@@ -27,11 +27,10 @@
 #include "BVH.h"
 using namespace std;
 
-#define NUM_THREADS 25
-#define BVH_THRESHOLD 150
-#define PRINT_RAY_DEBUG false
-#define PRINT_FRAME_TIME false
-
+const int NUM_THREADS = 25;
+const int BVH_THRESHOLD = 150;
+const bool PRINT_RAY_DEBUG = false; // this may not work correctly with multiple threads for best results, set NUM_THREADS to 1
+const bool PRINT_FRAME_TIME = true;
 const float EDIST = 30.0;
 const int NUMDIV = 800;
 const long TOTAL_RAYS = NUMDIV * NUMDIV;
@@ -74,9 +73,6 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 	SceneObject* obj;
 
 	bool isShadow = false;
-	float alpha = 1.0f;
-	float rho = 0.0f;
-
 	int numIntersections = 0;
 
 	//If number of objects in scene is greater than threshold, 
@@ -90,11 +86,6 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 
 	//Object's colour
 	LightingResult result = obj->lighting(lightPos, -ray.dir, ray.hit);
-
-	// color = rho * (alpha * (result.ambient + result.diffuse) + (1 - alpha) * transmissiveColor) + (1 - rho) * reflectedColor + result.specular;
-	// color = alpha * (rho * (result.ambient + result.diffuse) + (1 - rho) * reflectedColor) + (1 - alpha) * transmissiveColor + result.specular;
-	// color = result.ambient + (rho * result.diffuse) + ((1 - rho) * reflectedColor) + result.specular;
-	// color = (alpha * (result.ambient + result.diffuse)) + ((1 - alpha) * transmissiveColor) + result.specular;
 	color = result.ambient + result.diffuse;
 
 	// Shadow calculation
@@ -128,34 +119,37 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 		}
 	}
 
-	// Reflection calculation
 	if (obj->isReflective() && step < MAX_STEPS) {
-		rho = obj->getReflectionCoeff();
+		// Reflection calculation
+		float rho = obj->getReflectionCoeff();
 		glm::vec3 normalVec = obj->normal(ray.hit);
 		glm::vec3 reflectedDir = glm::reflect(ray.dir, normalVec);
 		Ray reflectedRay(ray.hit, reflectedDir);
 		reflectedColor = trace(reflectedRay, obj->getRefractiveIndex(), step + 1);
-		color = (rho * color) + ((1 - rho) * reflectedColor);
+		color += rho * reflectedColor;
 	}
 
 	if(obj->isTransparent() && step < MAX_STEPS) {
 		// Transparency calculation
-		alpha = obj->getTransparencyCoeff();
+		float alpha = obj->getTransparencyCoeff();
 		Ray transparencyRay(ray.hit, ray.dir);
 		transmissiveColor = trace(transparencyRay, obj->getRefractiveIndex(), step + 1);
 		color = (alpha * color) + ((1 - alpha) * transmissiveColor);
 	} else if(obj->isRefractive() && step < MAX_STEPS) {
 		// Refraction calculation
-		alpha = obj->getRefractionCoeff();
+		float alpha = obj->getRefractionCoeff();
 		float eta_2 = obj->getRefractiveIndex();
 		glm::vec3 n = obj->normal(ray.hit);
 		(glm::dot(ray.dir, n) > 0) ? n = -n : n = n;
-		glm::vec3 g = glm::refract(glm::normalize(ray.dir), glm::normalize(n), eta_1 / eta_2);
+		glm::vec3 g = glm::refract(glm::normalize(ray.dir), n, eta_1 / eta_2);
 		Ray refractedRay(ray.hit, g);
 		transmissiveColor = trace(refractedRay, eta_2, step + 1);
 		color = (alpha * color) + ((1 - alpha) * transmissiveColor);
 	}
 
+	// don't add specular component if object is in shadow
+	// adding it after all other calculatinos ensures it's brightness 
+	// is preseved through transparency and reflection calculations
 	return (isShadow) ? color : color + result.specular;
 }
 
@@ -185,13 +179,13 @@ void printRayDebug() {
 		totalIntersections += numRayIntersections[i];
 	}
 	cout << "Total Intersection Tests per Frame: " << totalIntersections << endl;
-	cout << "Average Intersection Tests per Ray per Frame: " << (float) totalIntersections / numRayIntersections.size() << endl;
+	cout << "Average Intersection Tests per Ray per Frame: " << static_cast<float>(totalIntersections / numRayIntersections.size()) << endl;
 	numRayIntersections.clear();
 }
 
-void rayTraceThread(RayWrapper *rayArgs, size_t numRays) {
+void rayTraceThread(RayWrapper *rays, size_t numRays) {
 	for(int i = 0; i < numRays; i++) {
-		rayArgs[i].col = trace(*(rayArgs[i].ray), 1, 1); //Trace the primary ray and get the colour value
+		rays[i].col = trace(*(rays[i].ray), 1, 1); //Trace the primary ray and get the colour value
 	}
 	return;
 }
@@ -316,7 +310,7 @@ void initialize() {
 	Sphere *sphere3 = new Sphere(glm::vec3(5, 5, -70), 5.0);
 	sphere3->setColor(glm::vec3(1, 0, 0));   //Set colour to red
 	sphere3->setShininess(100);
-	sphere3->setTransparency(true, 0.1);
+	sphere3->setTransparency(true, 0.3);
 	sceneObjects.push_back(sphere3);		 //Add sphere to scene objects
 
 	Sphere *sphere4 = new Sphere(glm::vec3(5, -10, -60), 5.0);
@@ -325,18 +319,26 @@ void initialize() {
 	sphere4->setRefractivity(true, 0.1, 1.1);
 	sceneObjects.push_back(sphere4);		 //Add sphere to scene objects
 
-	Plane *plane = new Plane(glm::vec3(-20., -15, -40), //Point A
-							  glm::vec3(20., -15, -40), //Point B
-							  glm::vec3(20., -15, -200), //Point C
-							  glm::vec3(-20., -15, -200)); //Point D
-	plane->setColor(glm::vec3(0.8, 0.8, 0));
-	plane->setSpecularity(false);
-	plane->setStripe(true);
-	plane->addStripe(5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)});
-	plane->setTextured(true);
-	plane->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
-	plane->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
-	sceneObjects.push_back(plane);		 //Add plane to scene objects
+	Plane *floor = new Plane(glm::vec3(-40., -15, -40), //Point A
+							  glm::vec3(40., -15, -40), //Point B
+							  glm::vec3(40., -15, -200), //Point C
+							  glm::vec3(-40., -15, -200)); //Point D
+	floor->setColor(glm::vec3(0.8, 0.8, 0));
+	floor->setSpecularity(false);
+	floor->setStripe(true, 5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)});
+	floor->setTextured(true);
+	floor->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
+	floor->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
+	sceneObjects.push_back(floor);
+
+	Plane *backWall = new Plane(glm::vec3(-40., -15, -200), //Point A
+								glm::vec3(40., -15, -200), //Point B
+								glm::vec3(40., 40, -200), //Point C
+								glm::vec3(-40., 40, -200)); //Point D
+	backWall->setColor(glm::vec3(0.8, 0.8, 0.8));
+	backWall->setSpecularity(false);
+	backWall->setCheckered(true, 5, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+	sceneObjects.push_back(backWall);
 
 	// drawCircles(100, false);
 

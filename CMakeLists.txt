@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
-project(Lab07)
+project(Assignment_2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(CXX_FLAGS "-Wnodeprecated-declarations")
+set(CXX_FLAGS "-Wno-deprecated-declarations")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
+# set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -fsanitize=address -g")
+set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS} -fsanitize=address")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 

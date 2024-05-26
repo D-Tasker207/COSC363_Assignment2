@@ -13,12 +13,6 @@
 #include "TextureBMP.h"
 #include "SceneObject.h"
 
-typedef struct {
-	int stripeWidth;
-	glm::vec3 stripeDirection;
-	std::vector<glm::vec3> stripeColors;
-} stripe_t;
-
 class Plane : public virtual SceneObject
 {
 private:
@@ -29,12 +23,20 @@ private:
 	int nverts_ = 4;				//Number of vertices (3 or 4)
 
 	bool stripe_ = false; //stripe pattern: true/false
-	std::vector<stripe_t> stripes_; // stripe struct vector
+	int stripeWidth_ = 0; //stripe width
+	glm::vec3 stripeDirection_ = glm::vec3(0); //stripe direction
+	std::vector<glm::vec3> stripeColors_; //stripe colors
 
 	bool tex_ = false;
 	glm::vec2 texA_ = glm::vec3(0);   //The texture coordinates of the quad
 	glm::vec2 texB_ = glm::vec3(0);
 	TextureBMP texture_;
+
+	bool checkered_ = false; //checkered pattern: true/false
+	int checkeredWidth_ = 0; //checkered width
+	glm::vec3 checkeredColor1_ = glm::vec3(0); //checkered color 1
+	glm::vec3 checkeredColor2_ = glm::vec3(0); //checkered color 2
+	
 protected:
 	void calculateAABB() override;
 
@@ -50,14 +52,24 @@ public:
 
 	bool isInside(glm::vec3 pt);
 	int getNumVerts();
-	
+
 	float intersect(glm::vec3 posn, glm::vec3 dir) override;
 	glm::vec3 normal(glm::vec3 pt) override;
 	glm::vec3 getColor(glm::vec3 hit) override;
 
-	void setStripe(bool flag);
-	void addStripe(int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors);
+	void setStripe(bool flag, int stripeWidth, glm::vec3 stripeDirection, std::vector<glm::vec3> stripeColors);
+	void setStripe(bool flag) { stripe_ = flag; }
+	void setStripeWidth(int stripeWidth) { stripeWidth_ = stripeWidth; }
+	void setStripeDirection(glm::vec3 stripeDirection) { stripeDirection_ = stripeDirection; }
+	void addStripeColor(glm::vec3 color) { stripeColors_.push_back(color); }
 	bool isStripe() { return stripe_; }
+
+	void setCheckered(bool flag, int width, glm::vec3 color1, glm::vec3 color2);
+	void setCheckered(bool flag) { checkered_ = flag; }
+	void setCheckeredWidth(int width) { checkeredWidth_ = width; }
+	void setCheckeredColor1(glm::vec3 color1) { checkeredColor1_ = color1; }
+	void setCheckeredColor2(glm::vec3 color2) { checkeredColor2_ = color2; }
+	bool isCheckered() { return checkered_; }
 
 	void setTextured(bool flag);
 	void setTexture(TextureBMP file);
