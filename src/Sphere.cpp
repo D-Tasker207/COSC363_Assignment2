@@ -13,6 +13,8 @@
 * Sphere's intersection method.  The input is a ray. 
 */
 float Sphere::intersect(glm::vec3 p0, glm::vec3 dir) {
+    // if (aabb_.intersect(p0, dir) == -1.0) return -1.0;  // No intersection if ray does not intersect AABB
+
     glm::vec3 vdif = p0 - center;   //Vector s (see Slide 28)
     float b = glm::dot(dir, vdif);
     float len = glm::length(vdif);

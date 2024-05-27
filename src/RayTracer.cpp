@@ -22,6 +22,7 @@
 #include "FilePath.h"
 #include "SceneObject.h"
 #include "Plane.h"
+#include "Cylinder.h"
 #include "Sphere.h"
 #include "RayBatchFactory.h"
 #include "Ray.h"
@@ -29,7 +30,7 @@
 using namespace std;
 
 const int NUM_THREADS = 25;
-const bool ENABLE_BVH = true;
+const bool ENABLE_BVH = false;
 const bool PRINT_RAY_DEBUG = false; // enabling this will increase frame draw time significantly due to thread synchronization
 const bool PRINT_FRAME_TIME = true;
 const float EDIST = 25.0;
@@ -67,7 +68,7 @@ float getTimeDifference(struct timeval *start, struct timeval *end) {
 //----------------------------------------------------------------------------------
 glm::vec3 trace(Ray ray, int eta_1, int step) {
 	glm::vec3 backgroundCol(0);						//Background colour = (0,0,0)
-	glm::vec3 lightPos(10, 40, -3);					//Light's position
+	glm::vec3 lightPos(10, 30, -3);					//Light's position
 	glm::vec3 color(0);
 	glm::vec3 shadowColor(0);
 	glm::vec3 reflectedColor(0);
@@ -126,10 +127,12 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 		// Reflection calculation
 		float rho = obj->getReflectionCoeff();
 		glm::vec3 normalVec = obj->normal(ray.hit);
-		glm::vec3 reflectedDir = glm::reflect(ray.dir, normalVec);
-		Ray reflectedRay(ray.hit, reflectedDir);
-		reflectedColor = trace(reflectedRay, obj->getRefractiveIndex(), step + 1);
-		color = (1-rho) * color + rho * reflectedColor;
+		if(glm::dot(ray.dir, normalVec) < 0.0f){
+			glm::vec3 reflectedDir = glm::reflect(ray.dir, normalVec);
+			Ray reflectedRay(ray.hit, reflectedDir);
+			reflectedColor = trace(reflectedRay, obj->getRefractiveIndex(), step + 1);
+			color = (1-rho) * color + rho * reflectedColor;
+		}
 	}
 
 	if(obj->isTransparent() && step < MAX_STEPS) {
@@ -306,6 +309,7 @@ void initialize() {
 
     glClearColor(0, 0, 0, 1);
 
+	// Objects
 	Sphere *sphere1 = new Sphere(glm::vec3(-5.0, 0.0, -90.0), 15.0);
 	sphere1->setColor(glm::vec3(0, 0, 1));   //Set colour to blue
 	sphere1->setReflectivity(true, 0.5);
@@ -328,8 +332,14 @@ void initialize() {
 	sphere4->setRefractivity(true, 0.1, 1.1);
 	sceneObjects.push_back(sphere4);		 //Add sphere to scene objects
 
-	Plane *floor = new Plane(glm::vec3(-40., -15, -40), //Point A
-							  glm::vec3(40., -15, -40), //Point B
+	Cylinder *cylinder = new Cylinder(glm::vec3(10, -15, -40), 2, 10);
+	cylinder->setColor(glm::vec3(0, 1, 1));
+	cylinder->setReflectivity(true, 0.9);
+	sceneObjects.push_back(cylinder);
+
+	// Walls
+	Plane *floor = new Plane(glm::vec3(-40., -15, 20), //Point A
+							  glm::vec3(40., -15, 20), //Point B
 							  glm::vec3(40., -15, -200), //Point C
 							  glm::vec3(-40., -15, -200)); //Point D
 	floor->setColor(glm::vec3(0.8, 0.8, 0));
@@ -349,24 +359,38 @@ void initialize() {
 	backWall->setCheckered(true, 2, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 	sceneObjects.push_back(backWall);
 
-	Plane *ceiling = new Plane(glm::vec3(-40., 40, -40), //Point A
-							   glm::vec3(40., 40, -40), //Point B
-							   glm::vec3(40., 40, -200), //Point C
-							   glm::vec3(-40., 40, -200)); //Point D
+	Plane *ceiling = new Plane(glm::vec3(-50, 40, 20), //Point A
+							   glm::vec3(-50, 40, -200), //Point B
+							   glm::vec3(50, 40, -200), //Point C
+							   glm::vec3(50, 40, 20)); //Point D
 	ceiling->setColor(glm::vec3(0.8, 0.8, 0.8));
 	ceiling->setSpecularity(false);
 	ceiling->setReflectivity(true, 0.7);
 	sceneObjects.push_back(ceiling);
 
-	Plane *leftWall = new Plane(glm::vec3(-40., -15, -40), //Point A
+	Plane *leftWall = new Plane(glm::vec3(-40., -15, 20), //Point A
 								glm::vec3(-40., -15, -200), //Point B
 								glm::vec3(-40., 40, -200), //Point C
-								glm::vec3(-40., 40, -40)); //Point D
+								glm::vec3(-40., 40, 20)); //Point D
 	leftWall->setColor(glm::vec3(1, 0, 0));
 	leftWall->setSpecularity(false);
 	sceneObjects.push_back(leftWall);
 
-	// drawCircles(100, false);
+	Plane *rightWall = new Plane(glm::vec3(40., -15, 20), //Point A
+								glm::vec3(40., 40, 20), //Point B
+								glm::vec3(40., 40, -200), //Point C
+								glm::vec3(40., -15, -200)); //Point D
+	rightWall->setColor(glm::vec3(0, 0.5, 1));
+	rightWall->setSpecularity(false);
+	sceneObjects.push_back(rightWall);
+
+	Plane *frontWall = new Plane(glm::vec3(-40., -15, 20), //Point A
+								glm::vec3(-40., 40, 20), //Point B
+								glm::vec3(40., 40, 20), //Point C
+								glm::vec3(40., -15, 20)); //Point D
+	frontWall->setColor(glm::vec3(0.8, 0.8, 0.8));
+	frontWall->setSpecularity(false);
+	sceneObjects.push_back(frontWall);
 
 	bvh = new BVH(&sceneObjects);
 }

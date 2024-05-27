@@ -14,6 +14,8 @@
 * See slide Lec09-Slide 31
 */
 float Plane::intersect(glm::vec3 p0, glm::vec3 dir) {
+	// if (aabb_.intersect(p0, dir) == -1.0) return -1.0;  // No intersection if ray does not intersect AABB
+
 	glm::vec3 n = normal(p0);
 	glm::vec3 vdif = a_ - p0;
 	float d_dot_n = glm::dot(dir, n);
