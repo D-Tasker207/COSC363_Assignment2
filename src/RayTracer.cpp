@@ -12,6 +12,7 @@
 #endif
 
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <cmath>
 #include <sys/time.h>
@@ -28,8 +29,8 @@
 using namespace std;
 
 const int NUM_THREADS = 25;
-const int BVH_THRESHOLD = 150;
-const bool PRINT_RAY_DEBUG = false; // this may not work correctly with multiple threads for best results, set NUM_THREADS to 1
+const bool ENABLE_BVH = true;
+const bool PRINT_RAY_DEBUG = false; // enabling this will increase frame draw time significantly due to thread synchronization
 const bool PRINT_FRAME_TIME = true;
 const float EDIST = 25.0;
 const int NUMDIV = 800;
@@ -44,9 +45,11 @@ int frameCount = 0;
 float frameTime = 0.0f;
 struct timeval lastTime;
 
-vector<int> numRayIntersections;
+std::vector<int> numRayIntersections;
 
-vector<SceneObject*> sceneObjects;
+std::mutex numRayIntersectionsMutex;
+
+std::vector<SceneObject*> sceneObjects;
 BVH *bvh;
 
 int raysPerThread = TOTAL_RAYS / NUM_THREADS;
@@ -77,7 +80,7 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 
 	//If number of objects in scene is greater than threshold, 
 	// use BVH to find closest intersection instead of linear search
-	if(sceneObjects.size() > BVH_THRESHOLD)
+	if(ENABLE_BVH)
 		numIntersections += ray.closestPt(*bvh);
 	else
     	numIntersections += ray.closestPt(sceneObjects);
@@ -100,7 +103,7 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 	
 	glm::vec3 lightVec = lightPos - ray.hit;
 	Ray shadowRay(ray.hit, lightVec);
-	if(sceneObjects.size() > BVH_THRESHOLD)
+	if(ENABLE_BVH)
 		numIntersections += shadowRay.closestPt(*bvh);
 	else
     	numIntersections += shadowRay.closestPt(sceneObjects);
@@ -145,6 +148,12 @@ glm::vec3 trace(Ray ray, int eta_1, int step) {
 		Ray refractedRay(ray.hit, g);
 		transmissiveColor = trace(refractedRay, eta_2, step + 1);
 		color = (alpha * color) + ((1 - alpha) * transmissiveColor);
+	}
+
+	if(PRINT_RAY_DEBUG){
+		// Lock the mutex before accessing the shared data
+		std::lock_guard<std::mutex> lock(numRayIntersectionsMutex);
+		numRayIntersections.push_back(numIntersections);
 	}
 
 	// don't add specular component if object is in shadow

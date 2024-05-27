@@ -20,14 +20,14 @@ class BVH {
         struct RayHit intersect(glm::vec3 p0, glm::vec3 dir);
 
         void printNodes();
-        void printGraph();
+        // void printGraph();
     private:
-        void buildRecursive(unsigned int lindex, unsigned int rindex, unsigned int nodeIndex);
+        void buildRecursive(BVHNode *node);
         AABB unionAABB(const AABB& a, const AABB& b);
-        void printNode(int index);
+        void printNode(BVHNode *node, unsigned int &index);
         
         std::vector<SceneObject*> *sceneObjects;
-        BVHNode *nodes;
+        BVHNode *head;
 };
 
 #endif
