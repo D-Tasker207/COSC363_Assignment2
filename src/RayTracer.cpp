@@ -23,6 +23,7 @@
 #include "SceneObject.h"
 #include "Plane.h"
 #include "Cylinder.h"
+#include "Cone.h"
 #include "Sphere.h"
 #include "RayBatchFactory.h"
 #include "Ray.h"
@@ -30,17 +31,20 @@
 using namespace std;
 
 const int NUM_THREADS = 25;
-const bool ENABLE_BVH = false;
-const bool PRINT_RAY_DEBUG = false; // enabling this will increase frame draw time significantly due to thread synchronization
-const bool PRINT_FRAME_TIME = true;
+bool ENABLE_AA = true;
+bool ENABLE_BVH = false;
+bool PRINT_RAY_DEBUG = false; // enabling this will increase frame draw time significantly due to thread synchronization
+bool PRINT_FRAME_TIME = false;
 const float EDIST = 25.0;
 const int NUMDIV = 800;
 const long TOTAL_RAYS = NUMDIV * NUMDIV;
-const int MAX_STEPS = 5;
+const int MAX_STEPS = 10;
 const float XMIN = -10.0;
 const float XMAX = 10.0;
 const float YMIN = -10.0;
 const float YMAX = 10.0;
+const float cellX = (XMAX - XMIN) / NUMDIV;  //cell width
+const float cellY = (YMAX - YMIN) / NUMDIV;  //cell height
 
 int frameCount = 0;
 float frameTime = 0.0f;
@@ -196,8 +200,23 @@ void printRayDebug() {
 }
 
 void rayTraceThread(RayWrapper *rays, size_t numRays) {
+	const float offset = 0.01f;
 	for(int i = 0; i < numRays; i++) {
-		rays[i].col = trace(*(rays[i].ray), 1, 1); //Trace the primary ray and get the colour value
+		if(ENABLE_AA){
+			glm::vec3 col(0.0f);
+			for(float dx = -0.5f; dx <= 0.5f; dx += 1.0f) {
+				for(float dy = -0.5f; dy <= 0.5f; dy += 1.0f) {
+					glm::vec3 perturbation(dx * cellX * offset, dy * cellY * offset, 0.0f);
+					glm::vec3 aaDir = rays[i].ray->dir + perturbation;
+					Ray ray(rays[i].ray->p0, aaDir);
+					col += trace(ray, 1, 1);
+				}
+			}
+			rays[i].col = col / 4.0f;
+		}
+		else {
+			rays[i].col = trace(*(rays[i].ray), 1, 1); //Trace the primary ray and get the colour value
+		}
 	}
 	return;
 }
@@ -208,8 +227,6 @@ void rayTraceThread(RayWrapper *rays, size_t numRays) {
 //---------------------------------------------------------------------------------------
 void display() {
 	float xp, yp;  //grid point
-	float cellX = (XMAX - XMIN) / NUMDIV;  //cell width
-	float cellY = (YMAX - YMIN) / NUMDIV;  //cell height
 	glm::vec3 eye(0., 0., 0.);
 
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -310,32 +327,36 @@ void initialize() {
     glClearColor(0, 0, 0, 1);
 
 	// Objects
-	Sphere *sphere1 = new Sphere(glm::vec3(-5.0, 0.0, -90.0), 15.0);
+	Sphere *sphere1 = new Sphere(glm::vec3(-15.0, -5.0, -60.0), 5.0);
 	sphere1->setColor(glm::vec3(0, 0, 1));   //Set colour to blue
 	sphere1->setReflectivity(true, 0.5);
 	sceneObjects.push_back(sphere1);		 //Add sphere to scene objects
 
-	Sphere *sphere2 = new Sphere(glm::vec3(10, 10, -60), 3.0);
+	Sphere *sphere2 = new Sphere(glm::vec3(10, 7, -60), 3.0);
 	sphere2->setColor(glm::vec3(0, 1, 1));   //Set colour to cyan
 	sphere2->setShininess(5);
 	sceneObjects.push_back(sphere2);		 //Add sphere to scene objects
 
-	Sphere *sphere3 = new Sphere(glm::vec3(5, 5, -70), 5.0);
+	Sphere *sphere3 = new Sphere(glm::vec3(15, -5.0, -60), 5.0);
 	sphere3->setColor(glm::vec3(1, 0, 0));   //Set colour to red
 	sphere3->setShininess(100);
 	sphere3->setTransparency(true, 0.3);
 	sceneObjects.push_back(sphere3);		 //Add sphere to scene objects
 
-	Sphere *sphere4 = new Sphere(glm::vec3(5, -10, -60), 5.0);
+	Sphere *sphere4 = new Sphere(glm::vec3(0, -5.0, -60), 5.0);
 	sphere4->setColor(glm::vec3(0, 1, 0));   //Set colour to green
 	sphere4->setSpecularity(false);
 	sphere4->setRefractivity(true, 0.1, 1.1);
 	sceneObjects.push_back(sphere4);		 //Add sphere to scene objects
 
-	Cylinder *cylinder = new Cylinder(glm::vec3(10, -15, -40), 2, 10);
+	Cylinder *cylinder = new Cylinder(glm::vec3(6.5, -15, -50), 2, 10);
 	cylinder->setColor(glm::vec3(0, 1, 1));
-	cylinder->setReflectivity(true, 0.9);
+	cylinder->setReflectivity(true, 0.7);
 	sceneObjects.push_back(cylinder);
+
+	Cone *cone = new Cone(glm::vec3(-6.5, -5, -50), 5, 10);
+	cone->setColor(glm::vec3(1, 0, 1));
+	sceneObjects.push_back(cone);
 
 	// Walls
 	Plane *floor = new Plane(glm::vec3(-40., -15, 20), //Point A
@@ -345,18 +366,18 @@ void initialize() {
 	floor->setColor(glm::vec3(0.8, 0.8, 0));
 	floor->setSpecularity(false);
 	floor->setStripe(true, 5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)});
-	floor->setTextured(true);
-	floor->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
-	floor->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
+	// floor->setTextured(true);
+	// floor->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
+	// floor->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
 	sceneObjects.push_back(floor);
 
 	Plane *backWall = new Plane(glm::vec3(-40., -15, -200), //Point A
 								glm::vec3(40., -15, -200), //Point B
 								glm::vec3(40., 40, -200), //Point C
 								glm::vec3(-40., 40, -200)); //Point D
-	backWall->setColor(glm::vec3(0.8, 0.8, 0.8));
+	backWall->setColor(glm::vec3(0.5, 0.5, 0.5));
 	backWall->setSpecularity(false);
-	backWall->setCheckered(true, 2, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+	backWall->setReflectivity(true, 1.);
 	sceneObjects.push_back(backWall);
 
 	Plane *ceiling = new Plane(glm::vec3(-50, 40, 20), //Point A
@@ -365,7 +386,7 @@ void initialize() {
 							   glm::vec3(50, 40, 20)); //Point D
 	ceiling->setColor(glm::vec3(0.8, 0.8, 0.8));
 	ceiling->setSpecularity(false);
-	ceiling->setReflectivity(true, 0.7);
+	ceiling->setCheckered(true, 2, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 	sceneObjects.push_back(ceiling);
 
 	Plane *leftWall = new Plane(glm::vec3(-40., -15, 20), //Point A
@@ -388,8 +409,9 @@ void initialize() {
 								glm::vec3(-40., 40, 20), //Point B
 								glm::vec3(40., 40, 20), //Point C
 								glm::vec3(40., -15, 20)); //Point D
-	frontWall->setColor(glm::vec3(0.8, 0.8, 0.8));
+	frontWall->setColor(glm::vec3(0.5, 0.5, 0.5));
 	frontWall->setSpecularity(false);
+	frontWall->setReflectivity(true, 1.);
 	sceneObjects.push_back(frontWall);
 
 	bvh = new BVH(&sceneObjects);
@@ -399,6 +421,18 @@ void keyHandler(unsigned char key, int x, int y){
     if(key == 27){
 		void freeRayBatches(RayBatches* rayBatches);
 		exit(0);
+	} else if (key == 'a'){
+		ENABLE_AA = !ENABLE_AA;
+		cout << "Anti-aliasing: " << (ENABLE_AA ? "Enabled" : "Disabled") << endl;
+	} else if (key == 'b'){
+		ENABLE_BVH = !ENABLE_BVH;
+		cout << "Bounding Volume Hierarchy: " << (ENABLE_BVH ? "Enabled" : "Disabled") << endl;
+	} else if (key == 'd'){
+		PRINT_RAY_DEBUG = !PRINT_RAY_DEBUG;
+		cout << "Ray Debug: " << (PRINT_RAY_DEBUG ? "Enabled" : "Disabled") << endl;
+	} else if (key == 't'){
+		PRINT_FRAME_TIME = !PRINT_FRAME_TIME;
+		cout << "Frame Time Debug: " << (PRINT_FRAME_TIME ? "Enabled" : "Disabled") << endl;
 	}
 }
 
@@ -413,6 +447,12 @@ int main(int argc, char *argv[]) {
     glutDisplayFunc(display);
 	glutIdleFunc(display);
     initialize();
+
+	cout << "Press ESC to exit" << endl;
+	cout << "Press 'a' to toggle anti-aliasing, status: " << (ENABLE_AA ? "Enabled" : "Disabled") << endl;
+	cout << "Press 'b' to toggle bounding volume hierarchy, status: " << (ENABLE_BVH ? "Enabled" : "Disabled") << endl;
+	cout << "Press 'd' to toggle ray debug, status: " << (PRINT_RAY_DEBUG ? "Enabled" : "Disabled") << endl;
+	cout << "Press 't' to toggle frame time debug, status: " << (PRINT_FRAME_TIME ? "Enabled" : "Disabled") << endl;
 
     glutMainLoop();
     return 0;
