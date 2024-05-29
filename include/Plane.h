@@ -28,8 +28,8 @@ private:
 	std::vector<glm::vec3> stripeColors_; //stripe colors
 
 	bool tex_ = false;
-	glm::vec2 texA_ = glm::vec3(0);   //The texture coordinates of the quad
-	glm::vec2 texB_ = glm::vec3(0);
+	glm::vec2 texA_ = a_;   //The texture coordinates of the quad
+	glm::vec2 texB_ = c_;
 	TextureBMP texture_;
 
 	bool checkered_ = false; //checkered pattern: true/false

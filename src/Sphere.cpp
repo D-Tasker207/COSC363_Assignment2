@@ -47,3 +47,26 @@ glm::vec3 Sphere::normal(glm::vec3 p) {
 void Sphere::calculateAABB() {
     aabb_ = AABB(center - glm::vec3(radius), center + glm::vec3(radius));
 }
+
+void Sphere::setTextured(bool flag) {
+    tex_ = flag;
+}
+
+void Sphere::setTexture(TextureBMP file) {
+    tex_ = true;
+    texture_ = file;
+}
+
+glm::vec3 Sphere::getColor(glm::vec3 hit){
+    glm::vec3 color = color_;
+    if(tex_){
+        float theta = acos((hit.y - center.y) / radius);
+        float phi = atan2(hit.z - center.z, hit.x - center.x);
+        if(phi < 0.0) phi += 2 * M_PI;
+        float u = phi / (2 * M_PI);
+        float v = 1 - theta / M_PI;
+        color = texture_.getColorAt(u, v);
+    }
+
+    return color;
+}

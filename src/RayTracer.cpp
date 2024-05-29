@@ -314,7 +314,6 @@ void drawCircles(const int numSpheres, const bool useRandomPlacement) {
 //     the ray traced image.
 //----------------------------------------------------------------------------------
 void initialize() {
-	gettimeofday(&lastTime, NULL);
 	rayBatches = createRayBatches(NUMDIV, NUM_THREADS);
 	if (rayBatches == nullptr) {
 		cout << "Unable to allocate memory for RayBatches array. Exiting..." << endl;
@@ -333,8 +332,8 @@ void initialize() {
 	sceneObjects.push_back(sphere1);		 //Add sphere to scene objects
 
 	Sphere *sphere2 = new Sphere(glm::vec3(10, 7, -60), 3.0);
-	sphere2->setColor(glm::vec3(0, 1, 1));   //Set colour to cyan
-	sphere2->setShininess(5);
+	sphere2->setTexture(TextureBMP(getFilePath("Earth.bmp").c_str()));
+	sphere2->setShininess(50);
 	sceneObjects.push_back(sphere2);		 //Add sphere to scene objects
 
 	Sphere *sphere3 = new Sphere(glm::vec3(15, -5.0, -60), 5.0);
@@ -366,9 +365,6 @@ void initialize() {
 	floor->setColor(glm::vec3(0.8, 0.8, 0));
 	floor->setSpecularity(false);
 	floor->setStripe(true, 5, glm::vec3(0, 0, 1), {glm::vec3(0, 1, 0), glm::vec3(1, 1, 0.5)});
-	// floor->setTextured(true);
-	// floor->setTexArea(glm::vec2(-15, -60), glm::vec2(5, -90));
-	// floor->setTexture(TextureBMP(getFilePath("Butterfly.bmp").c_str()));
 	sceneObjects.push_back(floor);
 
 	Plane *backWall = new Plane(glm::vec3(-40., -15, -200), //Point A
@@ -432,6 +428,7 @@ void keyHandler(unsigned char key, int x, int y){
 		cout << "Ray Debug: " << (PRINT_RAY_DEBUG ? "Enabled" : "Disabled") << endl;
 	} else if (key == 't'){
 		PRINT_FRAME_TIME = !PRINT_FRAME_TIME;
+		gettimeofday(&lastTime, NULL);
 		cout << "Frame Time Debug: " << (PRINT_FRAME_TIME ? "Enabled" : "Disabled") << endl;
 	}
 }

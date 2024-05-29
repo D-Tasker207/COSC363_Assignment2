@@ -10,6 +10,7 @@
 #define H_SPHERE
 #include <glm/glm.hpp>
 #include "SceneObject.h"
+#include "TextureBMP.h"
 
 /**
  * Defines a simple Sphere located at 'center'
@@ -19,6 +20,9 @@ class Sphere : public virtual SceneObject {
 private:
     glm::vec3 center = glm::vec3(0);
     float radius = 1;
+
+	bool tex_ = false;
+	TextureBMP texture_;
 protected:
 	void calculateAABB() override;
 public:
@@ -27,7 +31,11 @@ public:
 
 	float intersect(glm::vec3 p0, glm::vec3 dir) override;
 	glm::vec3 normal(glm::vec3 p) override;
+	glm::vec3 getColor(glm::vec3 hit) override;
 
+	void setTextured(bool flag);
+	void setTexture(TextureBMP color);
+	bool isTextured() { return tex_; }
 };
 
 #endif //!H_SPHERE
