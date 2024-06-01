@@ -200,7 +200,7 @@ void printRayDebug() {
 }
 
 void rayTraceThread(RayWrapper *rays, size_t numRays) {
-	const float offset = 0.01f;
+	const float offset = 0.025f;
 	for(int i = 0; i < numRays; i++) {
 		if(ENABLE_AA){
 			glm::vec3 col(0.0f);
@@ -331,7 +331,7 @@ void initialize() {
 	sphere1->setReflectivity(true, 0.5);
 	sceneObjects.push_back(sphere1);		 //Add sphere to scene objects
 
-	Sphere *sphere2 = new Sphere(glm::vec3(10, 7, -60), 3.0);
+	Sphere *sphere2 = new Sphere(glm::vec3(-5, 7, -60), 3.0);
 	sphere2->setTexture(TextureBMP(getFilePath("Earth.bmp").c_str()));
 	sphere2->setShininess(50);
 	sceneObjects.push_back(sphere2);		 //Add sphere to scene objects
